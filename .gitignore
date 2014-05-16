@@ -21,3 +21,10 @@
 *.i*86
 *.x86_64
 *.hex
+
+# Lexer/Parser specific
+*.gch
+parser.c
+parser.h
+scanner.yy.c
+scanner.yy.h

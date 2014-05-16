@@ -12,6 +12,8 @@
 
 "|"     {return PIPE;}
 
+"&"     {return BACKGROUND;}
+
 "$("    {return COMMAND_SUBSTITUTION_START;}
 
 ")"     {return COMMAND_SUBSTITUTION_END;}

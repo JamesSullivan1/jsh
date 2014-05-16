@@ -3,7 +3,9 @@
    
    start       -> commandList 
    commandList -> command PIPE commandList
+               -> command BACKGROUND PIPE commandList
                -> command 
+               -> command BACKGROUND
    command     -> FILENAME argumentList
                -> FILENAME
                -> COMMAND_SUBSTITUTION_START commandList 
@@ -33,10 +35,20 @@ printf("Syntax Error\n");
 }
 
 start ::= commandList .
-commandList ::= command PIPE commandList .
+commandList ::= command_start PIPE commandList .
 {
 }
-commandList ::= command .
+commandList ::= command_start .
+{
+}
+commandList ::= .
+{
+}
+
+command_start ::= command .
+{
+}
+command_start ::= command BACKGROUND .
 {
 }
 
