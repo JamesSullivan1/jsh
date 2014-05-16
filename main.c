@@ -24,7 +24,6 @@ int parse(char *cmd_line)
     int lexCode;
     do {
         lexCode = yylex(lexer);
-        printf("%d\n", lexCode);
         validParse = 1;
         Parse(parser, lexCode, NULL, &validParse);
     } while(lexCode > 0 && validParse != 0);
@@ -48,22 +47,6 @@ error:
 
 int main(int argc, char *argv[])
 {
-    // First test a simple parser
-    int result = 1;
-    void* parser = ParseAlloc(malloc);
-    Parse(parser, FILENAME, "cat", &result);
-    printf("%d\n", result);
-    result = 1;
-    Parse(parser, PIPE, 0, &result);
-    printf("%d\n", result);
-    result = 1;
-    Parse(parser, FILENAME, "ls", &result);
-    printf("%d\n", result);
-    result = 1;
-    Parse(parser, 0, 0, &result); // Signal end of tokens
-    printf("%d\n", result);
-    result = 1;
-    
     ParseFree(parser, free);
 
     size_t nbytes = MAX_SIZE;
