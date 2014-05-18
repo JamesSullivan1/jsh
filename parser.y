@@ -1,21 +1,19 @@
 /*
   Grammar definitions for the jsh parser
    
-   start       -> commandList 
+   start       -> commandList
+               -> commandList BACKGROUND
+               -> 
    commandList -> command PIPE commandList
-               -> command BACKGROUND PIPE commandList
-               -> command 
-               -> command BACKGROUND
+               -> command
    command     -> FILENAME argumentList
                -> FILENAME
-               -> COMMAND_SUBSTITUTION_START commandList 
-                    COMMAND_SUBSTITUTION_END
    argumentList-> argument argumentList
                -> argument
    argument    -> ARGUMENT
                -> FILENAME
-               -> COMMAND_SUBSTITUTION_START commandList
-                    COMMAND_SUBSTITUTION_END
+               -> REDIRECT_IN FILENAME
+               -> REDIRECT_OUT FILENAME
 */
 
 %include
@@ -34,21 +32,20 @@ printf("Syntax Error\n");
 *valid = 0;
 }
 
+start ::= .
+{
+}
 start ::= commandList .
-commandList ::= command_start PIPE commandList .
 {
 }
-commandList ::= command_start .
-{
-}
-commandList ::= .
+start ::= commandList BACKGROUND .
 {
 }
 
-command_start ::= command .
+commandList ::= command PIPE commandList .
 {
 }
-command_start ::= command BACKGROUND .
+commandList ::= command .
 {
 }
 
@@ -56,9 +53,6 @@ command ::= FILENAME argumentList .
 {
 }
 command ::= FILENAME .
-{
-}
-command ::= COMMAND_SUBSTITUTION_START commandList COMMAND_SUBSTITUTION_END . 
 {
 }
 
@@ -75,6 +69,9 @@ argument ::= ARGUMENT .
 argument ::= FILENAME .
 {
 }
-argument ::= COMMAND_SUBSTITUTION_START commandList COMMAND_SUBSTITUTION_END .
+argument ::= REDIRECT_IN FILENAME .
+{
+}
+argument ::= REDIRECT_OUT FILENAME .
 {
 }

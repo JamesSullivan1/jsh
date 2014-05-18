@@ -6,8 +6,14 @@ CFLAGS=-g -Wall
 
 all: jsh
 
-jsh: parser.o parser.h scanner.yy.o scanner.yy.h
-	$(CC) main.c parser.o parser.h scanner.yy.o scanner.yy.h -o jsh
+jsh: parser.o parser.h scanner.yy.o scanner.yy.h shell.o job.o job.h
+	$(CC) main.c parser.o parser.h scanner.yy.o scanner.yy.h shell.o job.o job.h -o jsh $(CFLAGS)
+
+shell.o: job.h shell.c
+	$(CC) shell.c job.h -c -O $(CFLAGS)
+
+job.o: job.h job.c
+	$(CC) job.c job.h -c -O $(CFLAGS)
 
 parser.o: lemonfiles
 	$(CC) parser.h parser.c -c -O
