@@ -137,6 +137,7 @@ int parse(char *cmd_line)
 
     } while(lexCode > 0);
 
+
     if(num_processes == 0) goto error;
 
     int k,l;
@@ -147,10 +148,10 @@ int parse(char *cmd_line)
         if(token[k]) free(token[k]);
     }
 
+
     // Initialize a job with the processes
+    if(current_job->first_process == NULL) current_job->first_process = new_process();
     process *p = current_job->first_process;
-    if(p == NULL) p = new_process();
-    
 
     for(k = 0; k < num_processes; k++) {
         p->argc = proc_argc[k];
@@ -158,8 +159,8 @@ int parse(char *cmd_line)
         for(j = 0; j < proc_argc[k]; j++) {
             // Clone in each token
             int len = strlen(proc_argv[k][j]);
-            p->argv[j] = malloc(len + 1);
-            sstrcpy(proc_argv[k][j], p->argv[j], len);
+            p->argv[j] = calloc(sizeof(char) * (len + 1), sizeof(char));
+            sstrcpy(p->argv[j], proc_argv[k][j], len);
             // Deallocate the memory associated with the old buffer
             while(proc_argv[k][j][l] != '\0') proc_argv[k][j][l++] = '\0';
             if(proc_argv[k][j]) free(proc_argv[k][j]);
@@ -168,6 +169,8 @@ int parse(char *cmd_line)
         p = p->next;
 
     }
+
+    current_job->command = current_job->first_process->argv[0];
     launch_job(current_job, foreground);
 
     current_job->next = new_job();

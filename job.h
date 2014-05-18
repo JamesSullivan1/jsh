@@ -18,6 +18,7 @@ struct process {
 };
 
 
+
 /* Job structure - A pipeline of processes */
 typedef struct job job;
 struct job {

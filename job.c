@@ -29,3 +29,12 @@ process *new_process()
     int status = 0;
     return p;
 }
+
+void print_process(process *p)
+{
+    printf("Process (%d):\nargc: %d\n", p->pid, p->argc);
+    int i = 0;
+    for(i = 0; i < p->argc; i++) {
+        printf("argv[%d]: %s\n", i, p->argv[i]);
+    }
+}
