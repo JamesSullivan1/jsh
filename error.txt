@@ -1,7 +1,0 @@
-lemon parser.y -s
-Parser statistics: 7 terminals, 7 nonterminals, 14 rules
-                   19 states, 0 parser table entries, 0 conflicts
-gcc parser.h parser.c -c -O
-flex --outfile=scanner.yy.c --header-file=scanner.yy.h scanner.l
-gcc scanner.yy.c scanner.yy.h -c -O
-gcc shell.c job.h -c -O
