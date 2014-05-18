@@ -114,6 +114,7 @@ int parse(char *cmd_line)
             sstrcpy(token[i++], yyget_text(lexer), len);
         } 
         else if(lexCode == 2 || lexCode == 0) {
+            if(i == 0) break;
             // This is a pipe or endline, so accumulate the tokens up to this point
             //  as the arguments to a single process.
             // Each process will be responsible for deallocation of this buffer.
