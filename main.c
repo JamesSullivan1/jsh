@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <signal.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "dbg.h"
@@ -94,6 +95,7 @@ int parse(char *cmd_line)
     int lexCode;
     int i,j;
     int proc_marker, num_processes;
+    int infile_marker, outfile_marker;
     char *proc_argv[MAX_ARGUMENTS][MAX_COMMANDS];
     int proc_argc[MAX_COMMANDS];
     i = 0;
@@ -107,37 +109,58 @@ int parse(char *cmd_line)
 
         if(!validParse || lexCode == -1) goto error;
 
-        if(lexCode > 2) {
+        if(lexCode == BACKGROUND) foreground = 0;
+        else if(lexCode == REDIRECT_IN) { 
+            infile_marker = i;
+        }
+        else if(lexCode == REDIRECT_OUT) {
+            outfile_marker = i;
+        }
+        else if(lexCode == 0 || lexCode == PIPE) {
+            if(i == 0) break;
+            // Don't treat IO as arguments
+            if(infile_marker != i && outfile_marker != i) {
+                // This is a pipe or endline, so accumulate the tokens up to this point
+                //  as the arguments to a single process.
+                 // Each process will be responsible for deallocation of this buffer.
+                int pos = 0;
+                for(j = proc_marker; j < i; j++) {
+                    // Clone in each token into the processes' argv
+                    int len = strlen(token[j]);
+                    proc_argv[num_processes][pos] = malloc(sizeof(char) * (len + 1));
+                    sstrcpy(proc_argv[num_processes][pos++], token[j], len); 
+                }
+                 proc_argc[num_processes] = i - proc_marker;
+                 // Increment the process count
+                num_processes++;
+                // The next process' arguments will start at token i
+                proc_marker = i;
+            } 
+        } else {
             // Clone the token
             int len = strlen(yyget_text(lexer));
             token[i] = calloc(sizeof(char) * (len + 1), sizeof(char));
             sstrcpy(token[i++], yyget_text(lexer), len);
-        } 
-        else if(lexCode == 2 || lexCode == 0) {
-            if(i == 0) break;
-            // This is a pipe or endline, so accumulate the tokens up to this point
-            //  as the arguments to a single process.
-            // Each process will be responsible for deallocation of this buffer.
-            int pos = 0;
-            for(j = proc_marker; j < i; j++) {
-                // Clone in each token into the processes' argv
-                int len = strlen(token[j]);
-                proc_argv[num_processes][pos] = malloc(sizeof(char) * (len + 1));
-                sstrcpy(proc_argv[num_processes][pos++], token[j], len); 
-            }
-            proc_argc[num_processes] = i - proc_marker;
-            // Increment the process count
-            num_processes++;
-            // The next process' arguments will start at token i
-            proc_marker = i;
-        } 
-        else if(lexCode == 1) {
-            // The job will be launched as a background process
-            foreground = 0;
         }
 
     } while(lexCode > 0);
 
+    char *infile_name;
+    char *outfile_name;
+
+    if(infile_marker > 0) {
+        int len = strlen(token[infile_marker]);
+        infile_name = (char*)malloc(sizeof(char) * (len+1));
+        sstrcpy(infile_name, token[infile_marker], len);
+        infile_marker = 0;
+    }
+
+    if(outfile_marker > 0) {
+        int len = strlen(token[outfile_marker]);
+        outfile_name = (char*)malloc(sizeof(char) * (len+1));
+        sstrcpy(outfile_name, token[outfile_marker], len);
+        outfile_marker = 0;
+    }
 
     if(num_processes == 0) goto error;
 
@@ -149,10 +172,20 @@ int parse(char *cmd_line)
         if(token[k]) free(token[k]);
     }
 
+    if(!current_job) current_job = new_job();
 
     // Initialize a job with the processes
     if(current_job->first_process == NULL) current_job->first_process = new_process();
     process *p = current_job->first_process;
+
+    if(infile_name) { 
+        current_job->stdin = open(infile_name, O_RDONLY);
+        free(infile_name);
+    }
+    if(outfile_name) {
+        current_job->stdout = open(outfile_name, O_RDWR | O_CREAT);
+        free(outfile_name);
+    }
 
     for(k = 0; k < num_processes; k++) {
         p->argc = proc_argc[k];
@@ -166,15 +199,16 @@ int parse(char *cmd_line)
             while(proc_argv[k][j][l] != '\0') proc_argv[k][j][l++] = '\0';
             if(proc_argv[k][j]) free(proc_argv[k][j]);
         }
-        p->next = new_process();
-        p = p->next;
 
+        if(k < num_processes - 1) {
+            p->next = new_process();
+            p = p->next;
+        }
     }
 
     current_job->command = current_job->first_process->argv[0];
     launch_job(current_job, foreground);
 
-    current_job->next = new_job();
     current_job = current_job->next;
 
     yy_delete_buffer(bufferState, lexer);

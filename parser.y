@@ -1,9 +1,13 @@
 /*
   Grammar definitions for the jsh parser
    
-   start       -> commandList
-               -> commandList BACKGROUND
+   start       -> jobSetIn
+               -> jobSetIn BACKGROUND
                -> 
+   jobSetIn    -> jobSetOut REDIRECT_IN FILENAME
+               -> jobSetOut
+   jobSetOut   -> commandList REDIRECT_OUT FILENAME
+               -> commandList
    commandList -> command PIPE commandList
                -> command
    command     -> FILENAME argumentList
@@ -12,8 +16,6 @@
                -> argument
    argument    -> ARGUMENT
                -> FILENAME
-               -> REDIRECT_IN FILENAME
-               -> REDIRECT_OUT FILENAME
 */
 
 %include
@@ -35,10 +37,24 @@ printf("Syntax Error\n");
 start ::= .
 {
 }
-start ::= commandList .
+start ::= jobSetIn .
 {
 }
-start ::= commandList BACKGROUND .
+start ::= jobSetIn BACKGROUND .
+{
+}
+
+jobSetIn ::= jobSetOut REDIRECT_IN FILENAME .
+{
+}
+jobSetIn ::= jobSetOut .
+{
+}
+
+jobSetOut ::= commandList REDIRECT_OUT FILENAME .
+{
+}          
+jobSetOut ::= commandList .
 {
 }
 
@@ -67,11 +83,5 @@ argument ::= ARGUMENT .
 {
 }
 argument ::= FILENAME .
-{
-}
-argument ::= REDIRECT_IN FILENAME .
-{
-}
-argument ::= REDIRECT_OUT FILENAME .
 {
 }
