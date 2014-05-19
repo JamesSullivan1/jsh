@@ -2,7 +2,8 @@
 %.c: %.l
 
 CC=gcc
-CFLAGS=-g -Wall
+CFLAGS=-g -Wall -lreadline
+
 
 all: jsh
 

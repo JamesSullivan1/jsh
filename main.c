@@ -3,6 +3,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #include "dbg.h"
 #include "parser.h"
 #include "scanner.yy.h"
@@ -16,6 +18,7 @@
 void *ParseAlloc(void* (*allocProc)(size_t));
 void Parse(void* parser, int token, const char* in, int* val);
 void ParseFree(void* parser, void(*freeProc)(void*));
+
 char *getcwd(char *buf, size_t size);
 
 extern job *first_job;
@@ -47,12 +50,12 @@ if(debug == 0) return;
     }
 }
 
-/* Print the prompt with the cwd to the command line */
-void print_prompt()
+/* Print the cwd to the command line */
+void print_cwd()
 {
     char cwd[1024];
     if( getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("%s$ ", cwd);
+        printf("%s", cwd);
     }
 }
 
@@ -240,9 +243,12 @@ error:
 
 int no_exit = 1;
 
-void int_handler(int dummy) {
-    no_exit = 0;
+void catch_interrupt(int signum) {
+    printf("\n");
+    fflush(stdout);
+    exit(1);
 }
+
 
 void print_usage(char *argv[])
 {
@@ -272,18 +278,18 @@ int main(int argc, char *argv[])
     init_shell();
     first_job = new_job();
     current_job = first_job;
-    size_t nbytes = MAX_SIZE;
     char *commandLine;
 
 
+    signal(SIGINT, catch_interrupt);
 
-    signal(SIGINT, int_handler);
-
-    print_prompt();
-    while( no_exit == 1 && getline(&commandLine, &nbytes, stdin)) {
+    print_cwd();
+    while( no_exit == 1 && (commandLine = readline("$ "))) {
+        if(commandLine[0] != 0) add_history(commandLine);
         parse(commandLine, debug);        
-        print_prompt();
+        print_cwd();
     }
 
+    clear_history();
     return 0;
 }

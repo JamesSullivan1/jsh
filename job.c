@@ -23,10 +23,10 @@ process *new_process()
 {
     process *p = malloc(sizeof(process));
     p->next = NULL;
-    pid_t pid = 0;
-    char completed = 0;
-    char stopped = 0;
-    int status = 0;
+    p->pid = 0;
+    p->completed = 0;
+    p->stopped = 0;
+    p->status = 0;
     return p;
 }
 
