@@ -327,7 +327,6 @@ void launch_process(process *p, pid_t pgid, int infile,
         close(infile);
     }
     if(outfile != STDOUT_FILENO) {
-        printf("Redirecting stdout to fd %d\n",outfile);
         dup2(outfile, STDOUT_FILENO);
         close(outfile);
     }
@@ -342,7 +341,7 @@ void launch_process(process *p, pid_t pgid, int infile,
     exit(1);
 }
 
-void launch_job(job *j, int foreground)
+void launch_job(job *j, int foreground, int debug)
 {
     process *p;
     pid_t pid;
@@ -383,7 +382,7 @@ void launch_job(job *j, int foreground)
         infile = mypipe[0];
     }
 
-    format_job_info(j, "launched");
+    if(debug) format_job_info(j, "launched");
 
     if(!shell_is_interactive) wait_for_job(j);
     

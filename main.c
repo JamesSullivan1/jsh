@@ -21,8 +21,6 @@ char *getcwd(char *buf, size_t size);
 extern job *first_job;
 job *current_job;
 
-int debug = 1;
-
 void print_lexCode(int debug, int lexCode)
 {
 if(debug == 0) return;
@@ -72,7 +70,7 @@ char *sstrcpy(char *dst, const char *src, size_t n)
 /* Parse the command line.
  *  Returns 0 on success and -1 on a syntax error.
  */
-int parse(char *cmd_line)
+int parse(char *cmd_line, int debug)
 {
     char *token[MAX_COMMANDS];
     int foreground = 1;
@@ -203,13 +201,12 @@ int parse(char *cmd_line)
     if(outfile_marker > 0) {
         current_job->stdout = open(outfile_name, O_WRONLY | O_CREAT, 
                         S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP);
-        printf("Got fd %d for file %s\n", current_job->stdout, outfile_name);
         free(outfile_name);
         outfile_marker = -1;
     }
 
     current_job->command = current_job->first_process->argv[0];
-    launch_job(current_job, foreground);
+    launch_job(current_job, foreground, debug);
 
     current_job = current_job->next;
 
@@ -247,8 +244,31 @@ void int_handler(int dummy) {
     no_exit = 0;
 }
 
+void print_usage(char *argv[])
+{
+    fprintf(stderr,"Usage: %s [-dh]\n",argv[0]);
+    exit(0);
+}
+
 int main(int argc, char *argv[])
 {
+    int debug = 0;
+    int opt;
+    while((opt = getopt(argc,argv,"dh")) != -1){
+        switch(opt) {
+            case 'd':
+                debug = 1;
+                printf("Running in debug mode.\n");
+                break;
+            case 'h':
+                print_usage(argv);
+                break;
+            default:
+                print_usage(argv);
+                break;
+        }
+    }
+
     init_shell();
     first_job = new_job();
     current_job = first_job;
@@ -256,11 +276,12 @@ int main(int argc, char *argv[])
     char *commandLine;
 
 
+
     signal(SIGINT, int_handler);
 
     print_prompt();
     while( no_exit == 1 && getline(&commandLine, &nbytes, stdin)) {
-        parse(commandLine);        
+        parse(commandLine, debug);        
         print_prompt();
     }
 
