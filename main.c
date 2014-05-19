@@ -8,7 +8,7 @@
 #include "scanner.yy.h"
 #include "job.h"
 
-
+#define MAX_HISTORY 1 << 8
 #define MAX_SIZE 1 << 16
 #define MAX_ARGUMENTS 1 << 8
 #define MAX_COMMANDS 1 << 8
@@ -58,12 +58,6 @@ void print_prompt()
     }
 }
 
-void execute(char **command, int background)
-{
-    int status;
-    pid_t pid = fork();
-}
-
 /* Safely copies n characters from src to dst, ensuring that dst is null-terminated. */
 char *sstrcpy(char *dst, const char *src, size_t n)
 {
@@ -100,6 +94,8 @@ int parse(char *cmd_line)
     int proc_argc[MAX_COMMANDS];
     i = 0;
     j = 0;
+    infile_marker = -1;
+    outfile_marker = -1;
     proc_marker = 0;
     num_processes = 0;
     do {
@@ -118,24 +114,21 @@ int parse(char *cmd_line)
         }
         else if(lexCode == 0 || lexCode == PIPE) {
             if(i == 0) break;
-            // Don't treat IO as arguments
-            if(infile_marker != i && outfile_marker != i) {
-                // This is a pipe or endline, so accumulate the tokens up to this point
-                //  as the arguments to a single process.
-                 // Each process will be responsible for deallocation of this buffer.
-                int pos = 0;
-                for(j = proc_marker; j < i; j++) {
-                    // Clone in each token into the processes' argv
-                    int len = strlen(token[j]);
-                    proc_argv[num_processes][pos] = malloc(sizeof(char) * (len + 1));
-                    sstrcpy(proc_argv[num_processes][pos++], token[j], len); 
-                }
-                 proc_argc[num_processes] = i - proc_marker;
-                 // Increment the process count
-                num_processes++;
-                // The next process' arguments will start at token i
-                proc_marker = i;
-            } 
+            // This is a pipe or endline, so accumulate the tokens up to this point
+            //  as the arguments to a single process.
+            int pos = 0;
+            for(j = proc_marker; j < i; j++) {
+                // Clone in each token into the processes' argv
+                int len = strlen(token[j]);
+                proc_argv[num_processes][pos] = malloc(sizeof(char) * (len + 1));
+                sstrcpy(proc_argv[num_processes][pos++], token[j], len); 
+            }
+            proc_argc[num_processes] = i - proc_marker;
+            // Increment the process count
+            num_processes++;
+            // The next process' arguments will start at token i
+            proc_marker = i;
+        // Any other tokens that are not already designated as IO 
         } else {
             // Clone the token
             int len = strlen(yyget_text(lexer));
@@ -152,14 +145,12 @@ int parse(char *cmd_line)
         int len = strlen(token[infile_marker]);
         infile_name = (char*)malloc(sizeof(char) * (len+1));
         sstrcpy(infile_name, token[infile_marker], len);
-        infile_marker = 0;
     }
 
     if(outfile_marker > 0) {
         int len = strlen(token[outfile_marker]);
         outfile_name = (char*)malloc(sizeof(char) * (len+1));
         sstrcpy(outfile_name, token[outfile_marker], len);
-        outfile_marker = 0;
     }
 
     if(num_processes == 0) goto error;
@@ -178,13 +169,18 @@ int parse(char *cmd_line)
     if(current_job->first_process == NULL) current_job->first_process = new_process();
     process *p = current_job->first_process;
 
-    if(infile_name) { 
+    if(infile_marker > 0) { 
         current_job->stdin = open(infile_name, O_RDONLY);
         free(infile_name);
+        infile_marker = -1;
     }
-    if(outfile_name) {
-        current_job->stdout = open(outfile_name, O_RDWR | O_CREAT);
+    if(outfile_marker > 0) {
+        printf("Opening file %s for output\n",outfile_name);
+        current_job->stdout = open(outfile_name, O_RDWR | O_CREAT, 
+                        S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP);
+        printf("Got a fd = %d\n",current_job->stdout);
         free(outfile_name);
+        outfile_marker = -1;
     }
 
     for(k = 0; k < num_processes; k++) {
@@ -252,6 +248,7 @@ int main(int argc, char *argv[])
     current_job = first_job;
     size_t nbytes = MAX_SIZE;
     char *commandLine;
+
 
     signal(SIGINT, int_handler);
 

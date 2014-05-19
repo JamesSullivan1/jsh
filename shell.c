@@ -311,9 +311,7 @@ void launch_process(process *p, pid_t pgid, int infile,
         setpgid(pid, pgid);
         if(foreground) tcsetpgrp(shell_terminal, pgid);
 
-    
-
-        /* Return handling for signals to default */
+        /* Reset handling for signals to default */
         signal(SIGINT, SIG_DFL);
         signal(SIGQUIT, SIG_DFL);
         signal(SIGTSTP, SIG_DFL);
@@ -323,13 +321,13 @@ void launch_process(process *p, pid_t pgid, int infile,
 
     }
 
-    /* Set the standard IO channels for the process */
+    /* Set the IO channels for the process */
     if(infile != STDIN_FILENO) {
         dup2(infile, STDIN_FILENO);
         close(infile);
     }
     if(outfile != STDOUT_FILENO) {
-        dup2(infile, STDOUT_FILENO);
+        dup2(outfile, STDOUT_FILENO);
         close(outfile);
     }
     if(errfile != STDERR_FILENO) {
@@ -387,6 +385,7 @@ void launch_job(job *j, int foreground)
     format_job_info(j, "launched");
 
     if(!shell_is_interactive) wait_for_job(j);
-    else if(foreground) put_job_in_foreground(j, 0);
+    
+    if(foreground) put_job_in_foreground(j, 0);
     else put_job_in_background(j, 0);
 }
