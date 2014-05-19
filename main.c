@@ -119,11 +119,16 @@ int parse(char *cmd_line)
             int pos = 0;
             for(j = proc_marker; j < i; j++) {
                 // Clone in each token into the processes' argv
-                int len = strlen(token[j]);
-                proc_argv[num_processes][pos] = malloc(sizeof(char) * (len + 1));
-                sstrcpy(proc_argv[num_processes][pos++], token[j], len); 
+                // As long as the token is not associated with a file redirect
+                if(j != infile_marker && j != outfile_marker) {
+                    int len = strlen(token[j]);
+                    proc_argv[num_processes][pos] = malloc(sizeof(char) * (len + 1));
+                    sstrcpy(proc_argv[num_processes][pos++], token[j], len); 
+                }
             }
             proc_argc[num_processes] = i - proc_marker;
+            if(infile_marker > 0) proc_argc[num_processes]--;
+            if(outfile_marker > 0) proc_argc[num_processes]--;
             // Increment the process count
             num_processes++;
             // The next process' arguments will start at token i
@@ -169,20 +174,7 @@ int parse(char *cmd_line)
     if(current_job->first_process == NULL) current_job->first_process = new_process();
     process *p = current_job->first_process;
 
-    if(infile_marker > 0) { 
-        current_job->stdin = open(infile_name, O_RDONLY);
-        free(infile_name);
-        infile_marker = -1;
-    }
-    if(outfile_marker > 0) {
-        printf("Opening file %s for output\n",outfile_name);
-        current_job->stdout = open(outfile_name, O_RDWR | O_CREAT, 
-                        S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP);
-        printf("Got a fd = %d\n",current_job->stdout);
-        free(outfile_name);
-        outfile_marker = -1;
-    }
-
+    // Initialize all processes
     for(k = 0; k < num_processes; k++) {
         p->argc = proc_argc[k];
         p->argv = (char**)malloc(sizeof(char *) * MAX_ARGUMENTS);
@@ -200,6 +192,20 @@ int parse(char *cmd_line)
             p->next = new_process();
             p = p->next;
         }
+    }
+
+    // Set IO as needed
+    if(infile_marker > 0) { 
+        current_job->stdin = open(infile_name, O_RDONLY);
+        free(infile_name);
+        infile_marker = -1;
+    }
+    if(outfile_marker > 0) {
+        current_job->stdout = open(outfile_name, O_WRONLY | O_CREAT, 
+                        S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP);
+        printf("Got fd %d for file %s\n", current_job->stdout, outfile_name);
+        free(outfile_name);
+        outfile_marker = -1;
     }
 
     current_job->command = current_job->first_process->argv[0];

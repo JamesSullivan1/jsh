@@ -327,6 +327,7 @@ void launch_process(process *p, pid_t pgid, int infile,
         close(infile);
     }
     if(outfile != STDOUT_FILENO) {
+        printf("Redirecting stdout to fd %d\n",outfile);
         dup2(outfile, STDOUT_FILENO);
         close(outfile);
     }
