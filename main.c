@@ -75,6 +75,8 @@ char *sstrcpy(char *dst, const char *src, size_t n)
  */
 int parse(char *cmd_line, int debug)
 {
+    int num_tokens;
+    num_tokens = 0;
     char *token[MAX_COMMANDS];
     int foreground = 1;
 
@@ -105,6 +107,8 @@ int parse(char *cmd_line, int debug)
         Parse(parser, lexCode, NULL, &validParse);
 
         if(!validParse || lexCode == -1) goto error;
+
+        if(num_tokens++ == MAX_COMMANDS) goto error;
 
         if(lexCode == BACKGROUND) foreground = 0;
         else if(lexCode == REDIRECT_IN) { 
